@@ -29,9 +29,9 @@ def goodreads(books):
     error=[]
     
     for book in books:
-        res = requests.get("https://www.goodreads.com/book/isbn/", params={"isbn": book.isbn, "key":"gegTzZXsPCrmdkItpaXyUw"})
+        res = requests.get("https://www.goodreads.com/book/isbn/", params={"isbn": book.isbn, "key":os.getenv("SECRET_KEY")})
         tree = ElementTree.fromstring(res.content)
-        query = requests.get("https://www.goodreads.com/book/review_counts.json", params={"isbns": book.isbn, "key":"gegTzZXsPCrmdkItpaXyUw"})
+        query = requests.get("https://www.goodreads.com/book/review_counts.json", params={"isbns": book.isbn, "key":os.getenv("SECRET_KEY")})
         
         try: 
             response = query.json()
@@ -44,20 +44,20 @@ def goodreads(books):
         
         d[book.isbn]= {'image_url': tree[1][8].text, 'small_image_url': tree[1][9].text,'description': tree[1][16].text, 'review':response }
         
-    return d, error
+    books = list(books)
+
+    if len(error) != 0:
+        for e in error:
+            books.remove(e)
+
+    return d, books
     
    
 @app.route("/")
 def index():
     books = db.execute("SELECT * FROM books ORDER BY random() LIMIT 6").fetchall()
     
-    d, error = goodreads(books)
-    
-    books = list(books)
-    
-    if len(error) != 0:
-        for e in error:
-            books.remove(e)
+    d, books = goodreads(books)
 
     return render_template("index.html", d=d, books=books,)
     
@@ -156,18 +156,19 @@ def book(isbn):
     
     if request.method == "POST":
         
+        # Ensure a review was written
         if not request.form.get('userreview'):
             return 'Must submit a review'
             
         user = session['user_id']
-        
         rating = request.form.get('rating')
-        
         review = request.form.get('userreview')
         
+        # Ensure user has not already written a review for this book
         if db.execute("SELECT * FROM reviews WHERE user_id = :user_id AND isbn=:isbn", {"user_id":user, "isbn":isbn}).rowcount >= 1:
             return "You have already submitted a review for this book."
             
+        # Query database to insert book review
         db.execute("INSERT INTO reviews (isbn, user_id, review, rating) VALUES (:isbn, :user_id, :review, :rating)", {"isbn":isbn,"user_id":user, "review":review, "rating":rating})
         db.commit()
         
@@ -180,10 +181,10 @@ def book(isbn):
         if book is None:
             return "No such book."
         
-        res = requests.get("https://www.goodreads.com/book/isbn/", params={"isbn": book.isbn, "key":"gegTzZXsPCrmdkItpaXyUw"})
+        res = requests.get("https://www.goodreads.com/book/isbn/", params={"isbn": book.isbn, "key":os.getenv("SECRET_KEY")})
         tree = ElementTree.fromstring(res.content)
       
-        query = requests.get("https://www.goodreads.com/book/review_counts.json", params={"isbns": book.isbn, "key":"gegTzZXsPCrmdkItpaXyUw"})
+        query = requests.get("https://www.goodreads.com/book/review_counts.json", params={"isbns": book.isbn, "key":os.getenv("SECRET_KEY")})
         try:
             response = query.json()
             
@@ -207,18 +208,18 @@ def search():
     if not request.args.get("search"):
         return "Must search a Book or an Author or an Isbn"
         
-    books = db.execute("SELECT * FROM books WHERE lower(author) LIKE lower(:search) OR lower(title) LIKE lower(:search) OR lower(isbn) LIKE lower(:search) LIMIT 9", {"search":"%" + request.args.get("search") + "%"})
+    books = db.execute("SELECT * FROM books WHERE \
+                        lower(author) LIKE lower(:search) OR  \
+                        lower(title) LIKE lower(:search) OR \
+                        lower(isbn) LIKE lower(:search) LIMIT 9", 
+                        {"search":"%" + request.args.get("search") + "%"})
     
     if books.rowcount == 0:
         return "Book or Author or ISBN not found."
         
     books = books.fetchall()
     
-    d, error = goodreads(books)
-    
-    if len(error) != 0:
-        for e in error:
-            books.remove(e)
+    d, books = goodreads(books)
     
     return render_template("index.html", books=books, d=d)
     
