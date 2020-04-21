@@ -1,0 +1,81 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    {{ book.title }}
+{% endblock %}
+
+{% block main %}
+
+<div class="media">
+  <img class="align-self-start mr-3" src="{{ d[book.isbn]['image_url'] }}" alt="Generic placeholder image" style="width: 25%">
+  <div class="media-body text-left">
+    <h2 class="mt-0">{{ book.title }}</h2>
+    <h3 class="mt-0 text-muted">By {{ book.author }}</h3>
+    <ul class="list-inline">
+      <li class="list-inline-item"><span class="badge badge-warning">{{ d[book.isbn]['review']['average_rating'] }}</span></li>
+      <li class="list-inline-item"><span class=""> {{ d[book.isbn]['review']['work_ratings_count'] }} reviews</span></li>
+    </ul>
+    
+    <p class="text-left">{{ d[book.isbn]['description']|safe }}</p>
+  </div>
+</div>
+
+<div>
+  <h5 class="text-left mt-5">Community reviews</h5>
+  
+  <ul class="list-unstyled">
+    {% for review in reviews %}
+    <li class="media">
+      <img class="img-thumbnail" src="/static/images/einstein.jpg" alt="Generic placeholder image">
+      <div class="media-body text-left">
+        <h6 class="ml-3 mt-0 mb-1"> <span class="text-primary">{{ review.user_id }}</span> rated it with a: <span class="badge badge-warning">{{ review.rating }}</span></h6>
+        <p class="ml-3"> {{ review.review }} </p>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+
+{% if session.user_id %}
+  <form action="#" method="post">
+      <label class="form-check my-1 mr-2 mt-3" for="ratig">Rate this book </label>
+    
+    <div class="form-check" id="ratingForm">
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="rating" id="inlineRadio1" value="1">
+        <label class="form-check-label" for="inlineRadio1">1</label>
+      </div>
+      
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="rating" id="inlineRadio2" value="2">
+        <label class="form-check-label" for="inlineRadio2">2</label>
+      </div>
+      
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="rating" id="inlineRadio3" value="3">
+        <label class="form-check-label" for="inlineRadio3">3 </label>
+      </div>
+      
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="rating" id="inlineRadio4" value="4">
+        <label class="form-check-label" for="inlineRadio4">4 </label>
+      </div>
+      
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="rating" id="inlineRadio5" value="5">
+        <label class="form-check-label" for="inlineRadio5">5 </label>
+      </div>
+    </div>
+  
+      <div class="form-group form-attrib">
+        <label for="userreview">Leave a review for this book</label>
+        <textarea class="form-attrib" name="userreview" id="userreview" rows="3" placeholder="Write a review"></textarea>
+        <input type="submit" class="btn btn-primary" value="Post"/>
+      </div> 
+    
+  </form>
+{% else %}
+  <p>Please <a href="{{ url_for('login') }}">Log in</a> to leave a review for this book.</p>
+{% endif %}
+
+{% endblock %}
